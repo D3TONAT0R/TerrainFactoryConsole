@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -10,9 +10,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HMCon3DPlugin\HMCon3DPlugin.csproj" />
-    <ProjectReference Include="..\HMConImagePlugin\HMConImagePlugin.csproj" />
-    <ProjectReference Include="..\HMConMCPlugin\HMConMCPlugin.csproj" />
+    <ProjectReference Include="..\HMCon3DModule\HMCon3DModule.csproj" />
+    <ProjectReference Include="..\HMConImageModule\HMConImageModule.csproj" />
+    <ProjectReference Include="..\HMConMCModule\HMConMCModule.csproj" />
     <ProjectReference Include="..\HMCon\HMCon.csproj" />
   </ItemGroup>
 
@@ -30,5 +30,13 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+
+  <Target Name="SpicNSpan" AfterTargets="Clean">
+    <!-- common vars https://msdn.microsoft.com/en-us/library/c02as0cs.aspx?f=255&MSPPError=-2147217396 -->
+    <RemoveDir Directories="$(TargetDir)" />
+    <!-- bin -->
+    <RemoveDir Directories="$(ProjectDir)$(BaseIntermediateOutputPath)" />
+    <!-- obj -->
+  </Target>
 
 </Project>
