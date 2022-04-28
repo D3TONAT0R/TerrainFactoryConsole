@@ -41,9 +41,9 @@ namespace HMConConsole
 		public static void Main(string[] launchArgs)
 		{
 
-			bool loadPlugins = true;
-			foreach (var a in launchArgs) if (a == "noplugins") loadPlugins = false;
-			Initialize(loadPlugins ? AppContext.BaseDirectory : null);
+			bool loadModules = true;
+			foreach (var a in launchArgs) if (a == "nomodules") loadModules = false;
+			Initialize(loadModules ? AppContext.BaseDirectory : null);
 
 #if DEBUG
 			if (launchArgs.Length > 0 && launchArgs[0] == "auto") autoInputActive = true;

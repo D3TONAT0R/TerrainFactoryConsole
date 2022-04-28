@@ -7,9 +7,9 @@
     "Run": {
       "commandName": "Project"
     },
-    "Run (No plugins)": {
+    "Run (No modules)": {
       "commandName": "Project",
-      "commandLineArgs": "noplugins"
+      "commandLineArgs": "nomodules"
     }
   }
 }
