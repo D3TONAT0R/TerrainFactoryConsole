@@ -217,7 +217,7 @@ namespace HMConConsole
 		static bool GetExportSettings(bool batch)
 		{
 			if (!GetExportOptions(batch)) return false;
-			while (!ExportUtility.ValidateExportSettings(currentJob.exportSettings, currentJob.CurrentData))
+			while (!ExportManager.ValidateExportSettings(currentJob.exportSettings, currentJob.CurrentData))
 			{
 				WriteError("Cannot export with the current settings / format!");
 				if (!GetExportOptions(batch)) return false;
@@ -332,7 +332,7 @@ namespace HMConConsole
 								var mod = c.ExecuteCommand(currentJob, args);
 								if (mod != null)
 								{
-									currentJob.exportSettings.AddModifierToChain(mod);
+									currentJob.modificationChain.AddModifier(mod);
 								}
 							}
 							catch (Exception e)
