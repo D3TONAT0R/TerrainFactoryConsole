@@ -5,6 +5,8 @@ using HMCon.Import;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 using static HMCon.ConsoleOutput;
 using static HMCon.HMConManager;
 
@@ -13,30 +15,7 @@ namespace HMConConsole
 	public class Program
 	{
 
-#if DEBUG
-		internal static int autoInputNum = 0;
-		internal static string[] autoInputs = GetAutoInputs();
-
-		private static string[] GetAutoInputs()
-		{
-			try
-			{
-				List<string> list = new List<string>();
-				foreach (var ln in Resources.autoinputs.Split(new string[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)) {
-					if(!ln.StartsWith("//") && !ln.StartsWith("#"))
-					{
-						list.Add(ln.Trim());
-					}
-				}
-				return list.ToArray();
-			}
-			catch
-			{
-				WriteWarning("No auto inputs were loaded");
-				return null;
-			}
-		}
-#endif
+		internal static List<string> commandQueue = new List<string>();
 
 		public static void Main(string[] launchArgs)
 		{
@@ -44,10 +23,8 @@ namespace HMConConsole
 			bool loadModules = true;
 			foreach (var a in launchArgs) if (a == "nomodules") loadModules = false;
 			Initialize(loadModules ? AppContext.BaseDirectory : null);
+			ErrorOccurred += OnConsoleError;
 
-#if DEBUG
-			if (launchArgs.Length > 0 && launchArgs[0] == "auto") autoInputActive = true;
-#endif
 			WriteLine("---------------------------------");
 			WriteLine("HEIGHTMAP CONVERTER V1.1");
 			WriteLine("---------------------------------");
@@ -82,13 +59,17 @@ namespace HMConConsole
 			}
 		}
 
+		static void OnConsoleError(string msg)
+		{
+			commandQueue.Clear();
+		}
+
 		static void BeginNewJob()
 		{
-			int result = GetInputFiles(out var fileList, out var args);
+			int result = GetInputFiles(out var fileList);
 			if (result < 0) return; //Do nothing, terminate the application
 			currentJob = new Job()
 			{
-				importArgs = args,
 				batchMode = result > 0
 			};
 			currentJob.AddInputFiles(fileList.ToArray());
@@ -135,27 +116,55 @@ namespace HMConConsole
 			};
 		}
 
-		static int GetInputFiles(out List<string> files, out string[] args)
+		static void CreateCommandQueue(string commandInput)
+		{
+			if(commandInput.ToLower().StartsWith("exec ")) commandInput = commandInput.Substring(5);
+			commandInput = commandInput.Replace("\"", "");
+			try
+			{
+				var lines = File.ReadAllLines(commandInput);
+				if(commandQueue.Count + lines.Length > 100)
+				{
+					WriteError("Command queue overflow (> 100). Commands not added.");
+				}
+				else
+				{
+					commandQueue.InsertRange(0, lines);
+				}
+			}
+			catch(Exception e)
+			{
+				WriteError($"Failed to add commands from file to queue ({commandInput}): {e.Message}");
+			}
+		}
+
+		static int GetInputFiles(out List<string> files)
 		{
 			WriteLine("Enter path to the input file:");
 			WriteLine("or type 'batch' and a path to perform batch operations");
-			string inputPath = GetInput();
+			string input = GetInput();
 			files = new List<string>();
-			inputPath = inputPath.Replace("\"", "");
-			inputPath = ExtractArgs(inputPath, out args);
-			if (inputPath.ToLower().StartsWith("quit"))
+			//input = input.Replace("\"", "");
+			if(input.ToLower().StartsWith("exec"))
+			{
+				//Add commands to queue
+				CreateCommandQueue(input);
+				input = GetInput();
+			}
+
+			if (input.ToLower().StartsWith("quit"))
 			{
 				return -1;
 			}
-			else if (inputPath.ToLower().StartsWith("batch"))
+			else if (input.ToLower().StartsWith("batch"))
 			{
-				if (inputPath.Length > 6)
+				if (input.Length > 6)
 				{
-					inputPath = inputPath.Substring(6);
-					if (Directory.Exists(inputPath))
+					input = input.Substring(6);
+					if (Directory.Exists(input))
 					{
-						WriteLine("Starting batch in directory " + inputPath + " ...");
-						foreach (string f in Directory.GetFiles(inputPath, "*", SearchOption.AllDirectories))
+						WriteLine("Starting batch in directory " + input + " ...");
+						foreach (string f in Directory.GetFiles(input, "*", SearchOption.AllDirectories))
 						{
 							if (ImportManager.CanImport(f))
 							{
@@ -178,8 +187,8 @@ namespace HMConConsole
 			}
 			else
 			{
-				files.Add(inputPath);
-				WriteLine("Reading file " + inputPath + " ...");
+				files.Add(input);
+				WriteLine("Reading file " + input + " ...");
 				return 0;
 			}
 		}
@@ -263,24 +272,30 @@ namespace HMConConsole
 			}
 			WriteLine("");
 			WriteLine("Type 'export' when ready to export");
-			WriteLine("Type 'cancel' to abort");
+			WriteLine("Type 'abort' to abort export");
 			WriteLine("--------------------");
 			string input;
 			while (true)
 			{
 				input = GetInput();
 				while (input.Contains("  ")) input = input.Replace("  ", " "); //Remove all double spaces
-				var split = input.Split(' ');
-				string cmd = split[0].ToLower();
-				string[] args = new string[split.Length - 1];
-				for (int i = 0; i < split.Length - 1; i++)
+
+				string cmd = input.Split(' ')[0].ToLower();
+				string argsString = "";
+				if(input.Length > cmd.Length + 1)
 				{
-					args[i] = split[i + 1];
+					argsString = input.Substring(cmd.Length + 1);
 				}
+
+				var args = Regex.Matches(argsString, @"[\""].+?[\""]|[^ ]+")
+				.Cast<Match>()
+				.Select(x => x.Value.Trim('"'))
+				.ToArray();
+
 				var r = HandleCommand(cmd, args, batch);
-				if (r != null)
+				if (r.HasValue)
 				{
-					return (bool)r;
+					return r.Value;
 				}
 			}
 		}
@@ -347,6 +362,40 @@ namespace HMConConsole
 				}
 				return null;
 			}
+			else if(cmd == "define")
+			{
+				if(args.Length >= 2)
+				{
+					currentJob.variables.Add(args[0], args[1]);
+				}
+				else
+				{
+					WriteError("Not enough arguments.");
+				}
+				return null;
+			}
+			else if(cmd == "definep")
+			{
+				if(args.Length >= 1)
+				{
+					string prompt;
+					if(args.Length >= 2)
+					{
+						prompt = args[1] + ":";
+					}
+					else
+					{
+						prompt = $"Enter value for variable '{args[0]}':";
+					}
+					WriteLine(prompt);
+					currentJob.variables.Add(args[0], GetInput(false));
+				}
+				else
+				{
+					WriteError("Not enough arguments.");
+				}
+				return null;
+			}
 			foreach (var c in CommandHandler.ConsoleCommands)
 			{
 				if (c.command == cmd)
@@ -398,48 +447,37 @@ namespace HMConConsole
 			return null;
 		}
 
-		public static string GetInput()
+		public static string GetInput(bool allowQueued = true)
 		{
 			Console.CursorVisible = true;
 			string s;
-			bool autoinput = false;
-#if DEBUG
-			autoinput = autoInputs != null && HMConManager.autoInputActive && autoInputNum < autoInputs.Length;
-			if (autoinput)
+
+			if (commandQueue.Count > 0 && allowQueued)
 			{
-				s = autoInputs[autoInputNum];
-				autoInputNum++;
+				s = commandQueue[0];
+				commandQueue.RemoveAt(0);
 				WriteAutoTask("> " + s);
 			}
 			else
 			{
-#endif
 				Console.ForegroundColor = ConsoleColor.Gray;
 				Console.Write("> ");
 				s = Console.ReadLine();
 				Console.ResetColor();
-#if DEBUG
 			}
-#endif
+
+			//Parse variables
+			if(currentJob != null)
+			{
+				s = currentJob.ParseVariables(s);
+			}
+
 			return s;
 		}
 
 		public static string GetInputPath()
 		{
-			return Job.ReplacePathVars(GetInput().Replace("\"", ""));
-		}
-
-		static string ExtractArgs(string input, out string[] args)
-		{
-			var split = input.Split(new string[] { " -" }, StringSplitOptions.RemoveEmptyEntries);
-			List<string> argList = new List<string>();
-			input = split[0];
-			for (int i = 1; i < split.Length; i++)
-			{
-				argList.Add(split[i].Trim());
-			}
-			args = argList.ToArray();
-			return input;
+			return GetInput().Replace("\"", "");
 		}
 	}
 }
