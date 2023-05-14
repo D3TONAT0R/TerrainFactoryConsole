@@ -60,6 +60,7 @@ namespace HMConConsole {
             }
         }
         
+        /*
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
@@ -69,6 +70,7 @@ namespace HMConConsole {
                 return ((System.Drawing.Icon)(obj));
             }
         }
+        */
         
         /// <summary>
         ///   Looks up a localized string similar to {user}\Dropbox\Iceland Replacement Project\output\heightmap.png -bytes
