@@ -225,7 +225,7 @@ namespace HMConConsole
 		static bool GetExportSettings(bool batch)
 		{
 			if (!GetExportOptions(batch)) return false;
-			while (!ExportManager.ValidateExportSettings(currentJob.exportSettings, currentJob.CurrentData))
+			while (!ExportManager.ValidateExportSettings(currentJob.outputFormats, currentJob.exportSettings, currentJob.CurrentData))
 			{
 				WriteError("Cannot export with the current settings / format!");
 				if (!GetExportOptions(batch)) return false;
@@ -314,9 +314,9 @@ namespace HMConConsole
 			{
 				if (args.Length > 0)
 				{
-					currentJob.exportSettings.SetOutputFormats(args, false);
+					currentJob.outputFormats.SetFormats(args, false);
 					string str = "";
-					foreach (FileFormat ff in currentJob.exportSettings.outputFormats)
+					foreach (FileFormat ff in currentJob.outputFormats)
 					{
 						str += " " + ff.Identifier;
 					}
