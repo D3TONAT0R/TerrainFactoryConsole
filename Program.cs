@@ -34,8 +34,7 @@ namespace HMConConsole
 
 				if (currentJob == null)
 				{
-					//quit the application by leaving the while loop
-					break;
+					return;
 				}
 
 				currentJob.NextFile();
