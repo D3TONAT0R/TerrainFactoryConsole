@@ -244,7 +244,7 @@ namespace HMConConsole
 			{
 				WriteListEntry(c.command, c.description, 0, false);
 			}
-			WriteListEntry("modify X..", "Modification commands", 0, false);
+			WriteListEntry("mod X..", "Modification commands", 0, false);
 			foreach (var m in CommandHandler.ModificationCommands)
 			{
 				WriteListEntry(m.command, m.description, 1, false);
@@ -315,7 +315,7 @@ namespace HMConConsole
 				}
 				return null;
 			}
-			else if (cmd == "modify")
+			else if (cmd == "mod")
 			{
 				if (args.Length > 0)
 				{
