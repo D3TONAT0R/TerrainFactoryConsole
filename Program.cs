@@ -14,6 +14,7 @@ namespace HMConConsole
 {
 	public class Program
 	{
+		internal static Worksheet worksheet;
 
 		internal static List<string> commandQueue = new List<string>();
 
@@ -22,7 +23,8 @@ namespace HMConConsole
 
 			bool loadModules = true;
 			foreach (var a in launchArgs) if (a == "nomodules") loadModules = false;
-			Initialize(loadModules ? AppContext.BaseDirectory : null);
+			ModuleLoadingEnabled = loadModules;
+			Initialize();
 			ErrorOccurred += OnConsoleError;
 
 			WriteLine("---------------------------------");
@@ -30,30 +32,30 @@ namespace HMConConsole
 			WriteLine("---------------------------------");
 			while (true)
 			{
-				BeginNewJob();
+				CreateNewWorksheet();
 
-				if (currentJob == null)
+				if (worksheet == null)
 				{
 					return;
 				}
 
-				currentJob.NextFile();
-				if (currentJob.CurrentData == null) continue;
+				worksheet.NextFile();
+				if (worksheet.CurrentData == null) continue;
 
-				if (currentJob.CurrentData.isValid)
+				if (worksheet.CurrentData.isValid)
 				{
-					if (!GetExportSettings(currentJob.batchMode))
+					if (!GetExportSettings(worksheet.batchMode))
 					{
-						currentJob = null;
+						worksheet = null;
 						continue;
 					}
 
-					currentJob.outputPath = GetExportPath(currentJob.batchMode);
+					worksheet.outputPath = GetExportPath(worksheet.batchMode);
 
-					currentJob.ExportAll();
+					worksheet.ExportAll();
 
 					WriteLine("---------------------------------");
-					currentJob = null;
+					worksheet = null;
 				}
 			}
 		}
@@ -63,52 +65,52 @@ namespace HMConConsole
 			commandQueue.Clear();
 		}
 
-		static void BeginNewJob()
+		static void CreateNewWorksheet()
 		{
 			int result = GetInputFiles(out var fileList);
 			if (result < 0) return; //Do nothing, terminate the application
-			currentJob = new Job()
+			worksheet = new Worksheet()
 			{
 				batchMode = result > 0
 			};
-			currentJob.AddInputFiles(fileList.ToArray());
+			worksheet.AddInputFiles(fileList.ToArray());
 
 			//Add console feedback
-			currentJob.FileImported += (int i, string s) =>
+			worksheet.FileImported += (int i, string s) =>
 			{
 
 			};
-			currentJob.FileImportFailed += (int i, string s, Exception e) =>
+			worksheet.FileImportFailed += (int i, string s, Exception e) =>
 			{
 				WriteError("IMPORT FAILED: " + s);
 				WriteError(e.ToString());
 			};
-			currentJob.FileExported += (int i, string s) =>
+			worksheet.FileExported += (int i, string s) =>
 			{
-				if (!currentJob.batchMode)
+				if (!worksheet.batchMode)
 				{
 					WriteSuccess("EXPORT SUCCESSFUL");
 				}
 				else
 				{
-					WriteSuccess($"EXPORT {i + 1}/{currentJob.InputFileList.Count} SUCCESSFUL");
+					WriteSuccess($"EXPORT {i + 1}/{worksheet.InputFileList.Count} SUCCESSFUL");
 				}
 			};
-			currentJob.FileExportFailed += (int i, string s, Exception e) =>
+			worksheet.FileExportFailed += (int i, string s, Exception e) =>
 			{
-				if (!currentJob.batchMode)
+				if (!worksheet.batchMode)
 				{
 					WriteError("EXPORT FAILED: " + s);
 				}
 				else
 				{
-					WriteError($"EXPORT {i}/{currentJob.InputFileList.Count} FAILED:");
+					WriteError($"EXPORT {i}/{worksheet.InputFileList.Count} FAILED:");
 				}
 				WriteError(e.ToString());
 			};
-			currentJob.ExportCompleted += () =>
+			worksheet.ExportCompleted += () =>
 			{
-				if (currentJob.batchMode)
+				if (worksheet.batchMode)
 				{
 					WriteSuccess("DONE!");
 				}
@@ -225,7 +227,7 @@ namespace HMConConsole
 		static bool GetExportSettings(bool batch)
 		{
 			if (!GetExportOptions(batch)) return false;
-			while (!ExportManager.ValidateExportSettings(currentJob.outputFormats, currentJob.exportSettings, currentJob.CurrentData))
+			while (!ExportManager.ValidateExportSettings(worksheet.outputFormats, worksheet.exportSettings, worksheet.CurrentData))
 			{
 				WriteError("Cannot export with the current settings / format!");
 				if (!GetExportOptions(batch)) return false;
@@ -314,9 +316,9 @@ namespace HMConConsole
 			{
 				if (args.Length > 0)
 				{
-					currentJob.outputFormats.SetFormats(args, false);
+					worksheet.outputFormats.SetFormats(args, false);
 					string str = "";
-					foreach (FileFormat ff in currentJob.outputFormats)
+					foreach (FileFormat ff in worksheet.outputFormats)
 					{
 						str += " " + ff.Identifier;
 					}
@@ -343,10 +345,10 @@ namespace HMConConsole
 						{
 							try
 							{
-								var mod = c.ExecuteCommand(currentJob, args);
+								var mod = c.ExecuteCommand(worksheet, args);
 								if (mod != null)
 								{
-									currentJob.modificationChain.AddModifier(mod);
+									worksheet.modificationChain.AddModifier(mod);
 								}
 							}
 							catch (Exception e)
@@ -365,7 +367,7 @@ namespace HMConConsole
 			{
 				if(args.Length >= 2)
 				{
-					currentJob.variables.Add(args[0], args[1]);
+					worksheet.variables.Add(args[0], args[1]);
 				}
 				else
 				{
@@ -387,7 +389,7 @@ namespace HMConConsole
 						prompt = $"Enter value for variable '{args[0]}':";
 					}
 					WriteLine(prompt);
-					currentJob.variables.Add(args[0], GetInput(false));
+					worksheet.variables.Add(args[0], GetInput(false));
 				}
 				else
 				{
@@ -399,7 +401,7 @@ namespace HMConConsole
 			{
 				if (c.command == cmd)
 				{
-					c.ExecuteCommand(currentJob, args);
+					c.ExecuteCommand(worksheet, args);
 					return null;
 				}
 			}
@@ -415,13 +417,13 @@ namespace HMConConsole
 					float high = float.MinValue;
 					float avg = 0;
 					int i = 0;
-					foreach (string path in currentJob.InputFileList)
+					foreach (string path in worksheet.InputFileList)
 					{
 						if (Path.GetExtension(path).ToLower() == ".asc")
 						{
 							i++;
 							ASCImporter.GetDataInfo(path, out float ascLow, out float ascHigh, out float ascAvg);
-							WriteLine(i + "/" + currentJob.InputFileList.Count);
+							WriteLine(i + "/" + worksheet.InputFileList.Count);
 							low = Math.Min(low, ascLow);
 							high = Math.Max(high, ascHigh);
 							avg += ascAvg;
@@ -466,9 +468,9 @@ namespace HMConConsole
 			}
 
 			//Parse variables
-			if(currentJob != null)
+			if(worksheet != null)
 			{
-				s = currentJob.ParseVariables(s);
+				s = worksheet.ParseVariables(s);
 			}
 
 			return s;
