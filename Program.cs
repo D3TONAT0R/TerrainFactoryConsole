@@ -27,9 +27,8 @@ namespace HMConConsole
 			Initialize();
 			ErrorOccurred += OnConsoleError;
 
-			WriteLine("---------------------------------");
-			WriteLine("HEIGHTMAP CONVERTER V1.1");
-			WriteLine("---------------------------------");
+			WriteBox("HEIGHTMAP CONVERTER V1.1");
+
 			while (true)
 			{
 				CreateNewWorksheet();
@@ -44,17 +43,10 @@ namespace HMConConsole
 
 				if (worksheet.CurrentData.isValid)
 				{
-					/*
-					if (!GetExportSettings(worksheet.batchMode))
-					{
-						worksheet = null;
-						continue;
-					}
-					*/
 					GetExportOptions();
 
 					worksheet.outputPath = GetExportPath(worksheet.ForceBatchNamingPattern);
-
+					
 					worksheet.ExportAll();
 
 					WriteLine("---------------------------------");
