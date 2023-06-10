@@ -44,13 +44,16 @@ namespace HMConConsole
 
 				if (worksheet.CurrentData.isValid)
 				{
+					/*
 					if (!GetExportSettings(worksheet.batchMode))
 					{
 						worksheet = null;
 						continue;
 					}
+					*/
+					GetExportOptions();
 
-					worksheet.outputPath = GetExportPath(worksheet.batchMode);
+					worksheet.outputPath = GetExportPath(worksheet.ForceBatchNamingPattern);
 
 					worksheet.ExportAll();
 
@@ -71,7 +74,7 @@ namespace HMConConsole
 			if (result < 0) return; //Do nothing, terminate the application
 			worksheet = new Worksheet()
 			{
-				batchMode = result > 0
+				ForceBatchNamingPattern = result > 0
 			};
 			worksheet.AddInputFiles(fileList.ToArray());
 
@@ -87,7 +90,7 @@ namespace HMConConsole
 			};
 			worksheet.FileExported += (int i, string s) =>
 			{
-				if (!worksheet.batchMode)
+				if (!worksheet.ForceBatchNamingPattern)
 				{
 					WriteSuccess("EXPORT SUCCESSFUL");
 				}
@@ -98,7 +101,7 @@ namespace HMConConsole
 			};
 			worksheet.FileExportFailed += (int i, string s, Exception e) =>
 			{
-				if (!worksheet.batchMode)
+				if (!worksheet.ForceBatchNamingPattern)
 				{
 					WriteError("EXPORT FAILED: " + s);
 				}
@@ -110,7 +113,7 @@ namespace HMConConsole
 			};
 			worksheet.ExportCompleted += () =>
 			{
-				if (worksheet.batchMode)
+				if (worksheet.ForceBatchNamingPattern)
 				{
 					WriteSuccess("DONE!");
 				}
@@ -224,17 +227,6 @@ namespace HMConConsole
 			return path;
 		}
 
-		static bool GetExportSettings(bool batch)
-		{
-			if (!GetExportOptions(batch)) return false;
-			while (!ExportManager.ValidateExportSettings(worksheet.outputFormats, worksheet.exportSettings, worksheet.CurrentData))
-			{
-				WriteError("Cannot export with the current settings / format!");
-				if (!GetExportOptions(batch)) return false;
-			}
-			return true;
-		}
-
 		static void WriteListEntry(string cmd, string desc, int indentLevel, bool required)
 		{
 			string s = required ? "*" : "";
@@ -245,10 +237,10 @@ namespace HMConConsole
 			WriteLine(s);
 		}
 
-		static bool GetExportOptions(bool batch)
+		static bool GetExportOptions()
 		{
 			WriteLine("--------------------");
-			if (batch) WriteLine("Note: The following export options will be applied to all files in the batch");
+			if (worksheet.HasMultipleInputs) WriteLine("Note: The following export options will be applied to all files in this batch.");
 			WriteLine("* = Required setting");
 			WriteLine("Export options:");
 			WriteListEntry("format N..", "Export to the specified format(s)", 0, true);
@@ -265,7 +257,7 @@ namespace HMConConsole
 			{
 				WriteListEntry(m.command, m.description, 1, false);
 			}
-			if (batch)
+			if (worksheet.HasMultipleInputs)
 			{
 				WriteLineSpecial("Batch export options:");
 				WriteLineSpecial("    join                Joins all files into one large file");
@@ -293,7 +285,7 @@ namespace HMConConsole
 				.Select(x => x.Value.Trim('"'))
 				.ToArray();
 
-				var r = HandleCommand(cmd, args, batch);
+				var r = HandleCommand(cmd, args, worksheet.HasMultipleInputs);
 				if (r.HasValue)
 				{
 					return r.Value;
@@ -407,11 +399,7 @@ namespace HMConConsole
 			}
 			if (batch)
 			{
-				if (cmd == "join")
-				{
-					WriteWarning("to do"); //TODO
-				}
-				else if (cmd == "equalizeheightmaps")
+				if (cmd == "equalizeheightmaps")
 				{
 					float low = float.MaxValue;
 					float high = float.MinValue;
