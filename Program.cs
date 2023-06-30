@@ -1,7 +1,9 @@
 ﻿using HMCon;
+using HMCon.Commands;
 using HMCon.Export;
 using HMCon.Formats;
 using HMCon.Import;
+using HMCon.Modification;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,9 +16,8 @@ namespace HMConConsole
 {
 	public class Program
 	{
-		internal static Worksheet worksheet;
 
-		internal static List<string> commandQueue = new List<string>();
+		internal static Worksheet worksheet;
 
 		public static void Main(string[] launchArgs)
 		{
@@ -25,7 +26,6 @@ namespace HMConConsole
 			foreach (var a in launchArgs) if (a == "nomodules") loadModules = false;
 			ModuleLoadingEnabled = loadModules;
 			Initialize();
-			ErrorOccurred += OnConsoleError;
 
 			WriteBox("HEIGHTMAP CONVERTER V1.1");
 
@@ -43,7 +43,12 @@ namespace HMConConsole
 
 				if (worksheet.CurrentData.isValid)
 				{
-					GetExportOptions();
+					bool result = GetExportOptions();
+					if(!result)
+					{
+						//Export was aborted via command
+						continue;
+					}
 
 					worksheet.outputPath = GetExportPath(worksheet.ForceBatchNamingPattern);
 					
@@ -55,15 +60,44 @@ namespace HMConConsole
 			}
 		}
 
-		static void OnConsoleError(string msg)
+		/*
+		static CommandResult ExecuteCommandInput(bool isAfterImport, string prompt = null)
 		{
-			commandQueue.Clear();
+			var input = CommandHandler.GetInput(worksheet, prompt, true);
+			CommandParser.ParseCommandInput(input, out string cmd, out string[] args);
+			if(isAfterImport)
+			{
+				if(cmd == "abort")
+				{
+					return CommandResult.RequestsQuit;
+				}
+			}
+			else
+			{
+				if(cmd == "exit")
+				{
+					return CommandResult.RequestsQuit;
+				}
+			}
+
+			foreach(var c in CommandHandler.ListValidCommands(isAfterImport ? CommandAttribute.ContextFlags.AfterImport : CommandAttribute.ContextFlags.BeforeImport))
+			{
+				if(cmd == c.attribute.commandName)
+				{
+					bool result = (bool)c.method.Invoke(null, new object[] { worksheet, args });
+					return result ? CommandResult.Success : CommandResult.Failed;
+				}
+			}
+
+			//No command was executed
+			return CommandResult.None;
 		}
+		*/
 
 		static void CreateNewWorksheet()
 		{
 			int result = GetInputFiles(out var fileList);
-			if (result < 0) return; //Do nothing, terminate the application
+			if(result < 0) return; //Do nothing, terminate the application
 			worksheet = new Worksheet()
 			{
 				ForceBatchNamingPattern = result > 0
@@ -82,7 +116,7 @@ namespace HMConConsole
 			};
 			worksheet.FileExported += (int i, string s) =>
 			{
-				if (!worksheet.ForceBatchNamingPattern)
+				if(!worksheet.ForceBatchNamingPattern)
 				{
 					WriteSuccess("EXPORT SUCCESSFUL");
 				}
@@ -93,7 +127,7 @@ namespace HMConConsole
 			};
 			worksheet.FileExportFailed += (int i, string s, Exception e) =>
 			{
-				if (!worksheet.ForceBatchNamingPattern)
+				if(!worksheet.ForceBatchNamingPattern)
 				{
 					WriteError("EXPORT FAILED: " + s);
 				}
@@ -105,50 +139,41 @@ namespace HMConConsole
 			};
 			worksheet.ExportCompleted += () =>
 			{
-				if (worksheet.ForceBatchNamingPattern)
+				if(worksheet.ForceBatchNamingPattern)
 				{
 					WriteSuccess("DONE!");
 				}
 			};
 		}
 
-		static void CreateCommandQueue(string commandInput)
-		{
-			if(commandInput.ToLower().StartsWith("exec ")) commandInput = commandInput.Substring(5);
-			commandInput = commandInput.Replace("\"", "");
-			try
-			{
-				var lines = File.ReadAllLines(commandInput);
-				if(commandQueue.Count + lines.Length > 100)
-				{
-					WriteError("Command queue overflow (> 100). Commands not added.");
-				}
-				else
-				{
-					commandQueue.InsertRange(0, lines);
-				}
-			}
-			catch(Exception e)
-			{
-				WriteError($"Failed to add commands from file to queue ({commandInput}): {e.Message}");
-			}
-		}
-
 		static int GetInputFiles(out List<string> files)
 		{
-			WriteLine("Enter path to the input file:");
+			WriteLine("Enter path to input file:");
 			WriteLine("or type 'batch' and a path to perform batch operations");
-			string input = GetInput();
+
+			CommandResult result = CommandResult.None;
+			while(result == CommandResult.None)
+			{
+				result = CommandHandler.ExecuteCommand(null, CommandHandler.GetInput(null), CommandAttribute.ContextFlags.BeforeImport);
+
+
+			}
+
+
+			string input = CommandHandler.GetInput(worksheet);
 			files = new List<string>();
 			//input = input.Replace("\"", "");
+			/*
 			if(input.ToLower().StartsWith("exec"))
 			{
 				//Add commands to queue
-				CreateCommandQueue(input);
-				input = GetInput();
+				CommandHandler.AddCommandsToQueue(in)
+				CommandHandler.CreateCommandQueue(input);
+				input = CommandHandler.GetInput(worksheet);
 			}
+			*/
 
-			if (input.ToLower().StartsWith("quit"))
+			if (input.ToLower().StartsWith("exit"))
 			{
 				return -1;
 			}
@@ -240,14 +265,14 @@ namespace HMConConsole
 			{
 				WriteListEntry(f.CommandKey, f.Description, 1, false);
 			}
-			foreach (var c in CommandHandler.ConsoleCommands)
+			foreach (var c in CommandHandler.Commands)
 			{
-				WriteListEntry(c.command, c.description, 0, false);
+				WriteListEntry(c.attribute.commandName, c.attribute.desc, 0, false);
 			}
 			WriteListEntry("mod X..", "Modification commands", 0, false);
-			foreach (var m in CommandHandler.ModificationCommands)
+			foreach (var m in CommandHandler.ModifierCommands)
 			{
-				WriteListEntry(m.command, m.description, 1, false);
+				WriteListEntry(m.attribute.commandName, m.attribute.desc, 1, false);
 			}
 			if (worksheet.HasMultipleInputs)
 			{
@@ -262,7 +287,7 @@ namespace HMConConsole
 			string input;
 			while (true)
 			{
-				input = GetInput();
+				input = CommandHandler.GetInput(worksheet);
 				while (input.Contains("  ")) input = input.Replace("  ", " "); //Remove all double spaces
 
 				string cmd = input.Split(' ')[0].ToLower();
@@ -296,25 +321,6 @@ namespace HMConConsole
 				WriteWarning("Export aborted");
 				return false;
 			}
-			else if (cmd == "format")
-			{
-				if (args.Length > 0)
-				{
-					worksheet.outputFormats.SetFormats(args, false);
-					string str = "";
-					foreach (FileFormat ff in worksheet.outputFormats)
-					{
-						str += " " + ff.Identifier;
-					}
-					if (str == "") str = " <NONE>";
-					WriteLine("Exporting to the following format(s):" + str);
-				}
-				else
-				{
-					WriteWarning("A list of formats is required!");
-				}
-				return null;
-			}
 			else if (cmd == "mod")
 			{
 				if (args.Length > 0)
@@ -323,22 +329,26 @@ namespace HMConConsole
 					cmd = argList[0];
 					argList.RemoveAt(0);
 					args = argList.ToArray();
-					foreach (var c in CommandHandler.ModificationCommands)
+					foreach (var modCommand in CommandHandler.ModifierCommands)
 					{
-						if (c.command == cmd)
+						if (modCommand.attribute.commandName == cmd)
 						{
 							try
 							{
-								var mod = c.ExecuteCommand(worksheet, args);
+								var mod = (Modifier)modCommand.method.Invoke(null, new object[] { worksheet, args });
 								if (mod != null)
 								{
 									worksheet.modificationChain.AddModifier(mod);
+								}
+								else
+								{
+									throw new NullReferenceException();
 								}
 							}
 							catch (Exception e)
 							{
 								WriteWarning(e.Message);
-								WriteWarning($"Usage: {c.command} {c.argsHint}");
+								WriteWarning($"Usage: {modCommand.attribute.commandName} {modCommand.attribute.args}");
 							}
 							return null;
 						}
@@ -347,45 +357,11 @@ namespace HMConConsole
 				}
 				return null;
 			}
-			else if(cmd == "define")
+			foreach (var c in CommandHandler.Commands)
 			{
-				if(args.Length >= 2)
+				if (c.attribute.commandName == cmd)
 				{
-					worksheet.variables.Add(args[0], args[1]);
-				}
-				else
-				{
-					WriteError("Not enough arguments.");
-				}
-				return null;
-			}
-			else if(cmd == "definep")
-			{
-				if(args.Length >= 1)
-				{
-					string prompt;
-					if(args.Length >= 2)
-					{
-						prompt = args[1] + ":";
-					}
-					else
-					{
-						prompt = $"Enter value for variable '{args[0]}':";
-					}
-					WriteLine(prompt);
-					worksheet.variables.Add(args[0], GetInput(false));
-				}
-				else
-				{
-					WriteError("Not enough arguments.");
-				}
-				return null;
-			}
-			foreach (var c in CommandHandler.ConsoleCommands)
-			{
-				if (c.command == cmd)
-				{
-					c.ExecuteCommand(worksheet, args);
+					c.method.Invoke(null, new object[] { worksheet, args });
 					return null;
 				}
 			}
@@ -428,37 +404,9 @@ namespace HMConConsole
 			return null;
 		}
 
-		public static string GetInput(bool allowQueued = true)
-		{
-			Console.CursorVisible = true;
-			string s;
-
-			if (commandQueue.Count > 0 && allowQueued)
-			{
-				s = commandQueue[0];
-				commandQueue.RemoveAt(0);
-				WriteAutoTask("> " + s);
-			}
-			else
-			{
-				Console.ForegroundColor = ConsoleColor.Gray;
-				Console.Write("> ");
-				s = Console.ReadLine();
-				Console.ResetColor();
-			}
-
-			//Parse variables
-			if(worksheet != null)
-			{
-				s = worksheet.ParseVariables(s);
-			}
-
-			return s;
-		}
-
 		public static string GetInputPath()
 		{
-			return GetInput().Replace("\"", "");
+			return CommandHandler.GetInput(worksheet, null).Replace("\"", "");
 		}
 	}
 }
