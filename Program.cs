@@ -151,14 +151,16 @@ namespace HMConConsole
 			WriteLine("Enter path to input file:");
 			WriteLine("or type 'batch' and a path to perform batch operations");
 
+			/*
 			CommandResult result = CommandResult.None;
 			while(result == CommandResult.None)
 			{
-				result = CommandHandler.ExecuteCommand(null, CommandHandler.GetInput(null), CommandAttribute.ContextFlags.BeforeImport);
-
+				string input = CommandHandler.GetInput(null);
+				result = CommandHandler.ExecuteCommand(null, input, CommandAttribute.ContextFlags.BeforeImport);
+				
 
 			}
-
+			*/
 
 			string input = CommandHandler.GetInput(worksheet);
 			files = new List<string>();
