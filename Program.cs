@@ -263,7 +263,7 @@ namespace HMConConsole
 			WriteLine("* = Required setting");
 			WriteLine("Export options:");
 			WriteListEntry("format N..", "Export to the specified format(s)", 0, true);
-			foreach (var f in FileFormatManager.GetSupportedFormats())
+			foreach (var f in FileFormatManager.GetSupportedFormats(FileFormat.FileSupportFlags.Export))
 			{
 				WriteListEntry(f.CommandKey, f.Description, 1, false);
 			}
