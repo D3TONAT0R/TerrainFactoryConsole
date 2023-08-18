@@ -11,10 +11,10 @@
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\HMCon3DModule\HMCon3DModule.csproj" />
-    <ProjectReference Include="..\HMConImageModule\HMConImageModule.csproj" />
-    <ProjectReference Include="..\HMConMCModule\HMConMCModule.csproj" />
-    <ProjectReference Include="..\HMCon\HMCon.csproj" />
+    <ProjectReference Include="..\TerrainFactory3DModule\TerrainFactory3DModule.csproj" />
+    <ProjectReference Include="..\TerrainFactoryImageModule\TerrainFactoryImageModule.csproj" />
+    <ProjectReference Include="..\TerrainFactoryMCModule\TerrainFactoryMCModule.csproj" />
+    <ProjectReference Include="..\TerrainFactory\TerrainFactory.csproj" />
   </ItemGroup>
   
   <ItemGroup>

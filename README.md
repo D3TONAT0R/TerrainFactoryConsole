@@ -1,2 +1,2 @@
-# HMConConsole
- HeightmapConverter (HMCon) Console Application
+# TerrainFactoryConsole
+ TerrainFactory Console Application

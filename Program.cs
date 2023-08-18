@@ -1,18 +1,18 @@
-﻿using HMCon;
-using HMCon.Commands;
-using HMCon.Export;
-using HMCon.Formats;
-using HMCon.Import;
-using HMCon.Modification;
+﻿using TerrainFactory;
+using TerrainFactory.Commands;
+using TerrainFactory.Export;
+using TerrainFactory.Formats;
+using TerrainFactory.Import;
+using TerrainFactory.Modification;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using static HMCon.ConsoleOutput;
-using static HMCon.HMConManager;
+using static TerrainFactory.ConsoleOutput;
+using static TerrainFactory.TerrainFactoryManager;
 
-namespace HMConConsole
+namespace TerrainFactoryConsole
 {
 	public class Program
 	{
@@ -27,7 +27,7 @@ namespace HMConConsole
 			ModuleLoadingEnabled = loadModules;
 			Initialize();
 
-			WriteBox("HEIGHTMAP CONVERTER V1.1");
+			WriteBox("TerrainFactory v1.2");
 
 			while (true)
 			{
