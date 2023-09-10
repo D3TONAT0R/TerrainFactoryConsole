@@ -22,9 +22,7 @@ namespace TerrainFactoryConsole
 		public static void Main(string[] launchArgs)
 		{
 
-			bool loadModules = true;
-			foreach (var a in launchArgs) if (a == "nomodules") loadModules = false;
-			ModuleLoadingEnabled = loadModules;
+			if(launchArgs.Contains("nomodules")) ModuleDirectories.Clear();
 			Initialize();
 
 			WriteBox("TerrainFactory v1.2");
@@ -41,22 +39,19 @@ namespace TerrainFactoryConsole
 				worksheet.NextFile();
 				if (worksheet.CurrentData == null) continue;
 
-				if (worksheet.CurrentData.isValid)
+				bool result = GetExportOptions();
+				if(!result)
 				{
-					bool result = GetExportOptions();
-					if(!result)
-					{
-						//Export was aborted via command
-						continue;
-					}
-
-					worksheet.outputPath = GetExportPath(worksheet.ForceBatchNamingPattern);
-					
-					worksheet.ExportAll();
-
-					WriteLine("---------------------------------");
-					worksheet = null;
+					//Export was aborted via command
+					continue;
 				}
+
+				worksheet.outputPath = GetExportPath(worksheet.ForceBatchNamingPattern);
+					
+				worksheet.ExportAll();
+
+				WriteLine("---------------------------------");
+				worksheet = null;
 			}
 		}
 
