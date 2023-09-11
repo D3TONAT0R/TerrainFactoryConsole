@@ -21,37 +21,47 @@ namespace TerrainFactoryConsole
 
 		public static void Main(string[] launchArgs)
 		{
-
-			if(launchArgs.Contains("nomodules")) ModuleDirectories.Clear();
-			Initialize();
-
-			WriteBox("TerrainFactory v1.2");
-
-			while (true)
+			try
 			{
-				CreateNewWorksheet();
+				if(launchArgs.Contains("nomodules")) ModuleDirectories.Clear();
+				Initialize();
 
-				if (worksheet == null)
+				WriteBox("TerrainFactory v1.2");
+
+				while(true)
 				{
-					return;
+					CreateNewWorksheet();
+
+					if(worksheet == null)
+					{
+						return;
+					}
+
+					worksheet.NextFile();
+					if(worksheet.CurrentData == null) continue;
+
+					bool result = GetExportOptions();
+					if(!result)
+					{
+						//Export was aborted via command
+						continue;
+					}
+
+					worksheet.outputPath = GetExportPath(worksheet.ForceBatchNamingPattern);
+
+					worksheet.ExportAll();
+
+					WriteLine("---------------------------------");
+					worksheet = null;
 				}
-
-				worksheet.NextFile();
-				if (worksheet.CurrentData == null) continue;
-
-				bool result = GetExportOptions();
-				if(!result)
-				{
-					//Export was aborted via command
-					continue;
-				}
-
-				worksheet.outputPath = GetExportPath(worksheet.ForceBatchNamingPattern);
-					
-				worksheet.ExportAll();
-
-				WriteLine("---------------------------------");
-				worksheet = null;
+			}
+			catch(Exception e)
+			{
+				WriteError("An unhandled exception was thrown:");
+				WriteError(e.ToString());
+				WriteError("---------------------------------");
+				WriteError("Press any key to terminate the application.");
+				Console.ReadKey();
 			}
 		}
 
