@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <ApplicationIcon>Resources\appicon.ico</ApplicationIcon>
+    <ApplicationIcon>appicon.ico</ApplicationIcon>
   </PropertyGroup>
   
   <ItemGroup>
@@ -11,25 +11,8 @@
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\TerrainFactory3DModule\TerrainFactory3DModule.csproj" />
     <ProjectReference Include="..\TerrainFactoryImageModule\TerrainFactoryImageModule.csproj" />
-    <ProjectReference Include="..\TerrainFactoryMCModule\TerrainFactoryMCModule.csproj" />
     <ProjectReference Include="..\TerrainFactory\TerrainFactory.csproj" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Compile Update="Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
   </ItemGroup>
 
   <Target Name="SpicNSpan" AfterTargets="Clean">
