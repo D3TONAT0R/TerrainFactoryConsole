@@ -17,7 +17,7 @@ namespace TerrainFactoryConsole
 	public class Program
 	{
 
-		internal static Worksheet worksheet;
+		internal static Project project;
 
 		public static void Main(string[] launchArgs)
 		{
@@ -30,15 +30,15 @@ namespace TerrainFactoryConsole
 
 				while(true)
 				{
-					CreateNewWorksheet();
+					CreateNewProject();
 
-					if(worksheet == null)
+					if(project == null)
 					{
 						return;
 					}
 
-					worksheet.NextFile();
-					if(worksheet.CurrentData == null) continue;
+					project.ImportNext();
+					if(project.CurrentData == null) continue;
 
 					bool result = GetExportOptions();
 					if(!result)
@@ -47,12 +47,12 @@ namespace TerrainFactoryConsole
 						continue;
 					}
 
-					worksheet.outputPath = GetExportPath(worksheet.ForceBatchNamingPattern);
+					project.OutputPath = GetExportPath(project.ForceBatchNamingPattern);
 
-					worksheet.ExportAll();
+					project.ProcessAll();
 
 					WriteLine("---------------------------------");
-					worksheet = null;
+					project = null;
 				}
 			}
 			catch(Exception e)
@@ -68,7 +68,7 @@ namespace TerrainFactoryConsole
 		/*
 		static CommandResult ExecuteCommandInput(bool isAfterImport, string prompt = null)
 		{
-			var input = CommandHandler.GetInput(worksheet, prompt, true);
+			var input = CommandHandler.GetInput(project, prompt, true);
 			CommandParser.ParseCommandInput(input, out string cmd, out string[] args);
 			if(isAfterImport)
 			{
@@ -89,7 +89,7 @@ namespace TerrainFactoryConsole
 			{
 				if(cmd == c.attribute.commandName)
 				{
-					bool result = (bool)c.method.Invoke(null, new object[] { worksheet, args });
+					bool result = (bool)c.method.Invoke(null, new object[] { project, args });
 					return result ? CommandResult.Success : CommandResult.Failed;
 				}
 			}
@@ -99,52 +99,52 @@ namespace TerrainFactoryConsole
 		}
 		*/
 
-		static void CreateNewWorksheet()
+		static void CreateNewProject()
 		{
 			int result = GetInputFiles(out var fileList);
 			if(result < 0) return; //Do nothing, terminate the application
-			worksheet = new Worksheet()
+			project = new Project()
 			{
 				ForceBatchNamingPattern = result > 0
 			};
-			worksheet.AddInputFiles(fileList.ToArray());
+			project.AddInputFiles(fileList.ToArray());
 
 			//Add console feedback
-			worksheet.FileImported += (int i, string s) =>
+			project.FileImported += (int i, string s) =>
 			{
 
 			};
-			worksheet.FileImportFailed += (int i, string s, Exception e) =>
+			project.FileImportFailed += (int i, string s, Exception e) =>
 			{
 				WriteError("IMPORT FAILED: " + s);
 				WriteError(e.ToString());
 			};
-			worksheet.FileExported += (int i, string s) =>
+			project.FileExported += (int i, string s) =>
 			{
-				if(!worksheet.ForceBatchNamingPattern)
+				if(!project.ForceBatchNamingPattern)
 				{
 					WriteSuccess("EXPORT SUCCESSFUL");
 				}
 				else
 				{
-					WriteSuccess($"EXPORT {i + 1}/{worksheet.InputFileList.Count} SUCCESSFUL");
+					WriteSuccess($"EXPORT {i + 1}/{project.InputFileList.Count} SUCCESSFUL");
 				}
 			};
-			worksheet.FileExportFailed += (int i, string s, Exception e) =>
+			project.FileExportFailed += (int i, string s, Exception e) =>
 			{
-				if(!worksheet.ForceBatchNamingPattern)
+				if(!project.ForceBatchNamingPattern)
 				{
 					WriteError("EXPORT FAILED: " + s);
 				}
 				else
 				{
-					WriteError($"EXPORT {i}/{worksheet.InputFileList.Count} FAILED:");
+					WriteError($"EXPORT {i}/{project.InputFileList.Count} FAILED:");
 				}
 				WriteError(e.ToString());
 			};
-			worksheet.ExportCompleted += () =>
+			project.ExportCompleted += () =>
 			{
-				if(worksheet.ForceBatchNamingPattern)
+				if(project.ForceBatchNamingPattern)
 				{
 					WriteSuccess("DONE!");
 				}
@@ -167,7 +167,7 @@ namespace TerrainFactoryConsole
 			}
 			*/
 
-			string input = CommandHandler.GetInput(worksheet);
+			string input = CommandHandler.GetInput(project);
 			files = new List<string>();
 			//input = input.Replace("\"", "");
 			/*
@@ -176,7 +176,7 @@ namespace TerrainFactoryConsole
 				//Add commands to queue
 				CommandHandler.AddCommandsToQueue(in)
 				CommandHandler.CreateCommandQueue(input);
-				input = CommandHandler.GetInput(worksheet);
+				input = CommandHandler.GetInput(project);
 			}
 			*/
 
@@ -264,7 +264,7 @@ namespace TerrainFactoryConsole
 		static bool GetExportOptions()
 		{
 			WriteLine("--------------------");
-			if (worksheet.HasMultipleInputs) WriteLine("Note: The following export options will be applied to all files in this batch.");
+			if (project.HasMultipleInputs) WriteLine("Note: The following export options will be applied to all files in this batch.");
 			WriteLine("* = Required setting");
 			WriteLine("Export options:");
 			WriteListEntry("format N..", "Export to the specified format(s)", 0, true);
@@ -281,7 +281,7 @@ namespace TerrainFactoryConsole
 			{
 				WriteListEntry(m.attribute.commandName, m.attribute.desc, 1, false);
 			}
-			if (worksheet.HasMultipleInputs)
+			if (project.HasMultipleInputs)
 			{
 				WriteLineSpecial("Batch export options:");
 				WriteLineSpecial("    join                Joins all files into one large file");
@@ -294,7 +294,7 @@ namespace TerrainFactoryConsole
 			string input;
 			while (true)
 			{
-				input = CommandHandler.GetInput(worksheet);
+				input = CommandHandler.GetInput(project);
 				while (input.Contains("  ")) input = input.Replace("  ", " "); //Remove all double spaces
 
 				string cmd = input.Split(' ')[0].ToLower();
@@ -309,7 +309,7 @@ namespace TerrainFactoryConsole
 				.Select(x => x.Value.Trim('"'))
 				.ToArray();
 
-				var r = HandleCommand(cmd, args, worksheet.HasMultipleInputs);
+				var r = HandleCommand(cmd, args, project.HasMultipleInputs);
 				if (r.HasValue)
 				{
 					return r.Value;
@@ -342,10 +342,10 @@ namespace TerrainFactoryConsole
 						{
 							try
 							{
-								var mod = (Modifier)modCommand.method.Invoke(null, new object[] { worksheet, args });
+								var mod = (Modifier)modCommand.method.Invoke(null, new object[] { project, args });
 								if (mod != null)
 								{
-									worksheet.modificationChain.AddModifier(mod);
+									project.modificationChain.AddModifier(mod);
 								}
 								else
 								{
@@ -368,7 +368,7 @@ namespace TerrainFactoryConsole
 			{
 				if (c.attribute.commandName == cmd)
 				{
-					c.method.Invoke(null, new object[] { worksheet, args });
+					c.method.Invoke(null, new object[] { project, args });
 					return null;
 				}
 			}
@@ -380,13 +380,13 @@ namespace TerrainFactoryConsole
 					float high = float.MinValue;
 					float avg = 0;
 					int i = 0;
-					foreach (string path in worksheet.InputFileList)
+					foreach (string path in project.InputFileList)
 					{
 						if (Path.GetExtension(path).ToLower() == ".asc")
 						{
 							i++;
 							ASCImporter.GetDataInfo(path, out float ascLow, out float ascHigh, out float ascAvg);
-							WriteLine(i + "/" + worksheet.InputFileList.Count);
+							WriteLine(i + "/" + project.InputFileList.Count);
 							low = Math.Min(low, ascLow);
 							high = Math.Max(high, ascHigh);
 							avg += ascAvg;
@@ -413,7 +413,7 @@ namespace TerrainFactoryConsole
 
 		public static string GetInputPath()
 		{
-			return CommandHandler.GetInput(worksheet, null).Replace("\"", "");
+			return CommandHandler.GetInput(project, null).Replace("\"", "");
 		}
 	}
 }
