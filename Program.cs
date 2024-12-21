@@ -37,9 +37,6 @@ namespace TerrainFactoryConsole
 						return;
 					}
 
-					project.ImportNext();
-					if(project.CurrentData == null) continue;
-
 					bool result = GetExportOptions();
 					if(!result)
 					{
