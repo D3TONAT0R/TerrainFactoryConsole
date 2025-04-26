@@ -1,6 +1,5 @@
 ﻿using TerrainFactory;
 using TerrainFactory.Commands;
-using TerrainFactory.Export;
 using TerrainFactory.Formats;
 using TerrainFactory.Import;
 using TerrainFactory.Modification;
@@ -124,7 +123,7 @@ namespace TerrainFactoryConsole
 				}
 				else
 				{
-					WriteSuccess($"EXPORT {i + 1}/{project.InputFileList.Count} SUCCESSFUL");
+					WriteSuccess($"EXPORT {i + 1}/{project.InputData.FileCount} SUCCESSFUL");
 				}
 			};
 			project.FileExportFailed += (int i, string s, Exception e) =>
@@ -135,7 +134,7 @@ namespace TerrainFactoryConsole
 				}
 				else
 				{
-					WriteError($"EXPORT {i}/{project.InputFileList.Count} FAILED:");
+					WriteError($"EXPORT {i}/{project.InputData.FileCount} FAILED:");
 				}
 				WriteError(e.ToString());
 			};
@@ -261,7 +260,7 @@ namespace TerrainFactoryConsole
 		static bool GetExportOptions()
 		{
 			WriteLine("--------------------");
-			if (project.HasMultipleInputs) WriteLine("Note: The following export options will be applied to all files in this batch.");
+			if (project.InputData.HasMultiple) WriteLine("Note: The following export options will be applied to all files in this batch.");
 			WriteLine("* = Required setting");
 			WriteLine("Export options:");
 			WriteListEntry("format N..", "Export to the specified format(s)", 0, true);
@@ -278,7 +277,7 @@ namespace TerrainFactoryConsole
 			{
 				WriteListEntry(m.attribute.commandName, m.attribute.desc, 1, false);
 			}
-			if (project.HasMultipleInputs)
+			if (project.InputData.HasMultiple)
 			{
 				WriteLineSpecial("Batch export options:");
 				WriteLineSpecial("    join                Joins all files into one large file");
@@ -306,7 +305,7 @@ namespace TerrainFactoryConsole
 				.Select(x => x.Value.Trim('"'))
 				.ToArray();
 
-				var r = HandleCommand(cmd, args, project.HasMultipleInputs);
+				var r = HandleCommand(cmd, args, project.InputData.HasMultiple);
 				if (r.HasValue)
 				{
 					return r.Value;
@@ -377,13 +376,13 @@ namespace TerrainFactoryConsole
 					float high = float.MinValue;
 					float avg = 0;
 					int i = 0;
-					foreach (string path in project.InputFileList)
+					foreach (string path in project.InputData.Files)
 					{
 						if (Path.GetExtension(path).ToLower() == ".asc")
 						{
 							i++;
 							ASCImporter.GetDataInfo(path, out float ascLow, out float ascHigh, out float ascAvg);
-							WriteLine(i + "/" + project.InputFileList.Count);
+							WriteLine(i + "/" + project.InputData.FileCount);
 							low = Math.Min(low, ascLow);
 							high = Math.Max(high, ascHigh);
 							avg += ascAvg;
