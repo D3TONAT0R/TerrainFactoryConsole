@@ -145,6 +145,8 @@ namespace TerrainFactoryConsole
 					WriteSuccess("DONE!");
 				}
 			};
+
+			project.InputData.LoadFirst();
 		}
 
 		static int GetInputFiles(out List<string> files)
