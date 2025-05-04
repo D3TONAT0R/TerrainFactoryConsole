@@ -192,7 +192,7 @@ namespace TerrainFactoryConsole
 						WriteLine("Starting batch in directory " + input + " ...");
 						foreach (string f in Directory.GetFiles(input, "*", SearchOption.AllDirectories))
 						{
-							if (ImportManager.CanImport(f))
+							if (FileFormat.IsImportSupported(f))
 							{
 								files.Add(f);
 							}
@@ -266,9 +266,9 @@ namespace TerrainFactoryConsole
 			WriteLine("* = Required setting");
 			WriteLine("Export options:");
 			WriteListEntry("format N..", "Export to the specified format(s)", 0, true);
-			foreach (var f in FileFormatManager.GetSupportedFormats(FileFormat.FileSupportFlags.Export))
+			foreach (var f in FileFormatRegistry.GetSupportedFormats(FileFormat.FileSupportFlags.Export))
 			{
-				WriteListEntry(f.CommandKey, f.Description, 1, false);
+				WriteListEntry(f.Command, f.Description, 1, false);
 			}
 			foreach (var c in CommandHandler.Commands)
 			{
